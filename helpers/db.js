@@ -1,5 +1,5 @@
 const sequelize = require('sequelize');
-module.exports = new sequelize('procuremanage', process.env.DB_USER, process.env.DB_PASS, {
+module.exports = new sequelize('user', process.env.DB_USER, process.env.DB_PASS, {
     host: process.env.DB_HOST,
     dialect: 'mysql',
     operatorAliases: false,

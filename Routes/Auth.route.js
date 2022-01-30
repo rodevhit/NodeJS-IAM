@@ -1,9 +1,10 @@
 "use strict";
 
 const express = require('express')
-const router = express.Router()
-//Biswa2022
-const AuthController = require('../Controllers/Auth.Controller')
+const router = express.Router();
+
+const AuthController = require('../Controllers/Auth.Controller');
+const { verifyAccessToken } = require('../helpers/jwt_helper');
 
 /**
  * @swagger
@@ -28,11 +29,6 @@ const AuthController = require('../Controllers/Auth.Controller')
  *         required: true
  *         type: string
  *         format: password
-*       - name: type
- *         description: Type of the user (1->Administration,2->Procure Manager, 3->Inspection Manager,4->Client)
- *         in: formData
- *         required: true
- *         type: number
  *     responses:
  *       200:
  *         description: User has been logged-in successfully and a new token has been generated
@@ -40,8 +36,6 @@ const AuthController = require('../Controllers/Auth.Controller')
  *         description: You do not have necessary permissions to login
  */
 router.post('/login', AuthController.login)
-
-
 
 /**
  * @swagger
@@ -53,12 +47,6 @@ router.post('/login', AuthController.login)
  *     description: Send the refresh token to get the new of AccessToken
  *     produces:
  *       - application/json
- *     parameters:
- *       - in: formData
- *         name: refreshToken
- *         description: Enter the refreshToken to generate new access  TOKEN
- *         required: true
- *         type: string
  *     responses:
  *       200:
  *         description: New AccessToken has been generated successfully
@@ -66,7 +54,6 @@ router.post('/login', AuthController.login)
  *         description: You do not have necessary permissions to get token
  */
 router.post('/refresh-token', AuthController.refreshToken);
-
 
 /**
  * @swagger
@@ -95,18 +82,33 @@ router.post('/refresh-token', AuthController.refreshToken);
  *         in: formData
  *         required: true
  *         type: number
- *       - name: refreshtoken
- *         description: Paste refresh Token
- *         in: formData
- *         required: true
- *         type: string
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: New user has been successfully registered with Portal.
  *       403: 
  *         description: You do not have necessary permissions to create new user or register.
  */
-router.post('/register', AuthController.register);
+router.post('/register', verifyAccessToken, AuthController.register);
+
+/**
+ * @swagger
+ * 
+ * /auth/logout:
+ *   delete:
+ *     tags:
+ *       - Auth
+ *     description: Logout user
+ *     produces:
+ *       - application/json
+ *     responses:
+ *       204:
+ *         description: User Logged out successfully
+ *       400: 
+ *         description: Something went wrong, unable to logout.
+ */
+ router.delete('/logout', AuthController.logout);
 
 
 
