@@ -31,3 +31,4 @@ Rest API with auth, crud, manage user role
 - Queue architecture implemented using rabbitMQ
 - Used redis for the security of tokens validation
 - Nodemailer used for sending emails
+- Sequelize used as ORM for DB communication
