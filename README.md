@@ -3,7 +3,7 @@
 Rest API with auth, crud, manage user role
 
 
-##Technologies & tools used
+## Technologies & tools used
 
 - Nodejs
 - ExpressJS
@@ -16,7 +16,7 @@ Rest API with auth, crud, manage user role
 - Swagger
 
 
-##Features & Implementations
+## Features & Implementations
 
 - Registering user by authorised user(admin)
 - Login user
