@@ -3,9 +3,13 @@ const { loginSchema, regSchema } = require('../helpers/validation_schema')
 const { signAccessToken, signRefreshToken, verifyRefreshToken } = require('../helpers/jwt_helper')
 const client = require('../helpers/init_redis')
 const passHelper = require('../helpers/passHelper')
+const moment = require('moment');
 
 //load models
 const User = require('../Models/User.model')
+
+const addTask = require('../helpers/task');
+const constants = require('../helpers/constants');
 
 module.exports = {
 
@@ -21,40 +25,38 @@ module.exports = {
 				raw: true
 			})
 
-
 			if (!user) throw createError.NotFound('User not registered');
 
 			const isMatch = await passHelper.isValidPassword(result.password, user.user_password)
 			if (!isMatch)
 				throw createError.Unauthorized('Invalid Username/Password')
 
-
 			const accessToken = await signAccessToken(user.user_id)
 			const refreshToken = await signRefreshToken(user.user_id)
 
 			let makeSecure = false
-            if (process.env.COOKIE_SAME_SITE == 'none') {
-                makeSecure = true
-            }
+			if (process.env.COOKIE_SAME_SITE == 'none') {
+				makeSecure = true
+			}
 
-            res.status(202).cookie('secretCookie', accessToken, {
-                sameSite: process.env.COOKIE_SAME_SITE,
-                path: '/',
-                expires: new Date(new Date().getTime() + process.env.ACCESS_TOKEN_EXPIRY * 1000),
-                httpOnly: true,
-                domain: process.env.COOKIE_DOMAIN,
-                secure: makeSecure
-            });
-            res.status(202).cookie('secretCook', refreshToken, {
-                sameSite: process.env.COOKIE_SAME_SITE,
-                path: '/',
-                expires: new Date(new Date().getTime() + process.env.REFRESH_TOKEN_EXPIRY * 1000),
-                httpOnly: true,
-                domain: process.env.COOKIE_DOMAIN,
-                secure: makeSecure
-            });
+			res.status(202).cookie('secretCookie', accessToken, {
+				sameSite: process.env.COOKIE_SAME_SITE,
+				path: '/',
+				expires: new Date(new Date().getTime() + process.env.ACCESS_TOKEN_EXPIRY * 1000),
+				httpOnly: true,
+				domain: process.env.COOKIE_DOMAIN,
+				secure: makeSecure
+			});
+			res.status(202).cookie('secretCook', refreshToken, {
+				sameSite: process.env.COOKIE_SAME_SITE,
+				path: '/',
+				expires: new Date(new Date().getTime() + process.env.REFRESH_TOKEN_EXPIRY * 1000),
+				httpOnly: true,
+				domain: process.env.COOKIE_DOMAIN,
+				secure: makeSecure
+			});
 
-			res.send({ 
+			res.send({
 				'status': 200,
 				'message': 'Login successfull'
 			})
@@ -69,45 +71,45 @@ module.exports = {
 	refreshToken: async (req, res, next) => {
 		try {
 			if (req.cookies.secretCook == '') throw createError.BadRequest('Refresh token is required to generate new access token.');
-            let refreshToken = '';
-            if (req.body.refreshToken) {
-                refreshToken = req.body.refreshToken;
-            }
+			let refreshToken = '';
+			if (req.body.refreshToken) {
+				refreshToken = req.body.refreshToken;
+			}
 
-            if (req.cookies.secretCook) {
-                refreshToken = req.cookies.secretCook
-            }
-            const userId = await verifyRefreshToken(refreshToken);
-            if (!userId) throw createError.BadRequest('Invalid Refresh token or it has been expired, try to Login!')
+			if (req.cookies.secretCook) {
+				refreshToken = req.cookies.secretCook
+			}
+			const userId = await verifyRefreshToken(refreshToken);
+			if (!userId) throw createError.BadRequest('Invalid Refresh token or it has been expired, try to Login!')
 
-            const newAccessToken = await signAccessToken(userId);
-            const newRefreshToken = await signRefreshToken(userId);
+			const newAccessToken = await signAccessToken(userId);
+			const newRefreshToken = await signRefreshToken(userId);
 
-            let makeSecure = false
-            if (process.env.COOKIE_SAME_SITE == 'none') {
-                makeSecure = true
-            }
+			let makeSecure = false
+			if (process.env.COOKIE_SAME_SITE == 'none') {
+				makeSecure = true
+			}
 
-            res.status(202).cookie('secretCookie', newAccessToken, {
-                sameSite: process.env.COOKIE_SAME_SITE,
-                path: '/',
-                expires: new Date(new Date().getTime() + process.env.ACCESS_TOKEN_EXPIRY * 1000),
-                httpOnly: true,
-                domain: process.env.COOKIE_DOMAIN,
-                secure: makeSecure
-            });
-            res.status(202).cookie('secretCook', newRefreshToken, {
-                sameSite: process.env.COOKIE_SAME_SITE,
-                path: '/',
-                expires: new Date(new Date().getTime() + process.env.REFRESH_TOKEN_EXPIRY * 1000),
-                httpOnly: true,
-                domain: process.env.COOKIE_DOMAIN,
-                secure: makeSecure
-            });
-            return res.send({
-                'status': 200,
-                'message': 'New Access Token generated successfully.',
-            });
+			res.status(202).cookie('secretCookie', newAccessToken, {
+				sameSite: process.env.COOKIE_SAME_SITE,
+				path: '/',
+				expires: new Date(new Date().getTime() + process.env.ACCESS_TOKEN_EXPIRY * 1000),
+				httpOnly: true,
+				domain: process.env.COOKIE_DOMAIN,
+				secure: makeSecure
+			});
+			res.status(202).cookie('secretCook', newRefreshToken, {
+				sameSite: process.env.COOKIE_SAME_SITE,
+				path: '/',
+				expires: new Date(new Date().getTime() + process.env.REFRESH_TOKEN_EXPIRY * 1000),
+				httpOnly: true,
+				domain: process.env.COOKIE_DOMAIN,
+				secure: makeSecure
+			});
+			return res.send({
+				'status': 200,
+				'message': 'New Access Token generated successfully.',
+			});
 		} catch (error) {
 			next(error)
 		}
@@ -134,6 +136,15 @@ module.exports = {
 				user_type: req.body.type
 			})
 
+            let mail_obj = {
+                to: result.username,
+                subject: 'Testing email worker using RabbitMQ - NodeJS',
+                template: 'registerUser',
+                cusContext: moment().year()
+            };
+            // console.log(mail_obj);
+            addTask.SendMail(constants.Queues.SEND_MAIL, mail_obj);
+
 			res.send({
 				status: 200,
 				message: 'Registration successfull',
@@ -149,16 +160,16 @@ module.exports = {
 	logout: async (req, res, next) => {
 		try {
 			if (req.body.refreshToken == '' || req.cookies.secretCook == '') throw createError.BadRequest('Alert!! something unexpected happened, contact admin.');
-            let refreshToken = '';
-            if (req.body.refreshToken) {
-                refreshToken = req.body.refreshToken;
-            }
+			let refreshToken = '';
+			if (req.body.refreshToken) {
+				refreshToken = req.body.refreshToken;
+			}
 
-            if (req.cookies.secretCook) {
-                refreshToken = req.cookies.secretCook;
-            }
-            res.clearCookie('secretCookie', { domain: process.env.COOKIE_DOMAIN });
-            res.clearCookie('secretCook', { domain: process.env.COOKIE_DOMAIN });
+			if (req.cookies.secretCook) {
+				refreshToken = req.cookies.secretCook;
+			}
+			res.clearCookie('secretCookie', { domain: process.env.COOKIE_DOMAIN });
+			res.clearCookie('secretCook', { domain: process.env.COOKIE_DOMAIN });
 			const userId = await verifyRefreshToken(refreshToken)
 
 			client.DEL(`auth-${userId}`, (err, val) => {
@@ -171,7 +182,5 @@ module.exports = {
 			next(error)
 		}
 	},
-
-
 }
 
